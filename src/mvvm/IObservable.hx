@@ -16,50 +16,48 @@ function build() {
     }
 
     fields = fields.concat((macro class Dummy {
-        var __listeners:Map<String, Array<Void->Void>> = [];
-
-        public function addListener(name:String, callback:Void->Void):Void {
-            var arr = __listeners.get(name);
-            if (arr == null) 
-                __listeners.set(name, arr = []);
-            arr.push(callback);
-        }
-    
-        public function removeListener(name:String, callback:Void->Void) {
-            __listeners.get(name)?.remove(callback);
-        }
-    
-        public function onPropertyChanged(name:String):Void {
-            final callbacks = __listeners.get(name);
-            if (callbacks != null) 
-                for (cb in callbacks)
-                    cb();
-        }
+        public var propertyChanged:Signal<String> = new Signal();
     }).fields);
+
+    // fields = fields.concat((macro class Dummy {
+    //     var __listeners:Map<String, Array<Void->Void>> = [];
+
+    //     public function addListener(name:String, callback:Void->Void):Void {
+    //         var arr = __listeners.get(name);
+    //         if (arr == null) 
+    //             __listeners.set(name, arr = []);
+    //         arr.push(callback);
+    //     }
+    
+    //     public function removeListener(name:String, callback:Void->Void) {
+    //         __listeners.get(name)?.remove(callback);
+    //     }
+    
+    //     public function onPropertyChanged(name:String):Void {
+    //         final callbacks = __listeners.get(name);
+    //         if (callbacks != null) 
+    //             for (cb in callbacks)
+    //                 cb();
+    //     }
+    // }).fields);
 
     return fields;
 
 }
 
 function makeAccessors(field:Field):Array<Field> {
-  
-    // final getter = 'get_${field.name}';
     final setter = 'set_${field.name}';
     final fieldType = switch (field.kind) {
         case FVar(t, e): t;
         default: throw "unsupported observable var";
     }
     field.kind = FProp("default", "set", fieldType);
-    // field.meta.push({name:":isVar", pos: Context.currentPos()});
     final acc = macro class Dummy {
-        // function $getter() {
-        //     return $i{field.name};
-        // }
-
         function $setter(v) {
             if ($i{field.name} != v) {
                 $i{field.name} = v;
-                onPropertyChanged($v{field.name});
+                propertyChanged.emit($v{field.name});
+                // onPropertyChanged($v{field.name});
             }
             return v;
         }
@@ -72,7 +70,8 @@ function makeAccessors(field:Field):Array<Field> {
 
 @:autoBuild(mvvm.IObservable.build())
 interface IObservable {
-    function addListener(name:String, callback:Void->Void):Void;
-    function removeListener(name:String, callback:Void->Void):Void;
-    function onPropertyChanged(name:String):Void;
+    var propertyChanged:Signal<String>;
+    // function addListener(name:String, callback:Void->Void):Void;
+    // function removeListener(name:String, callback:Void->Void):Void;
+    // function onPropertyChanged(name:String):Void;
 }

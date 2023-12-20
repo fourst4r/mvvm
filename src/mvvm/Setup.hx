@@ -41,48 +41,67 @@ class Setup {
     }
 
     #if macro
-    static function extractField(e:Expr) {
-        return switch (e.expr) {
-            case EField(_, field, _): field;
-            default: Context.error("Expected field", e.pos);
-        }
-    }
-
     static function bindInternal(source:Expr, target:Expr, mode:BindingMode) {
         switch (mode) {
             case OneTime:
                 // setup the IObservable listener
                 switch (source.expr) {
-                    case EField(vm, prop, _):
-                        return macro {
-                            var cb:()->Void = null;
-                            cb = () -> {
-                                trace("vm change (onetime) " + $v{prop});
-                                $target = $source;
-                                $vm.removeListener($v{prop}, cb);
+                    case EField(vm, prop, _)
+                       | EParenthesis(_.expr => ECheckType(_.expr => EField(vm,prop,_), _)):
+                        return macro @:observer {
+                            var cb:String->Void = null;
+                            cb = name -> {
+                                if (name == $v{prop}) {
+                                    trace("vm change (onetime) " + $v{prop});
+                                    $target = $source;
+                                    $vm.propertyChanged.disconnect(cb);
+                                }
                             };
-                            $vm.addListener($v{prop}, cb);
+                            $vm.propertyChanged.connect(cb);
                         };
+                        // return macro @:observer {
+                        //     var cb:()->Void = null;
+                        //     cb = () -> {
+                        //         trace("vm change (onetime) " + $v{prop});
+                        //         $target = $source;
+                        //         $vm.removeListener($v{prop}, cb);
+                        //     };
+                        //     $vm.addListener($v{prop}, cb);
+                        // };
                     default: 
                 }
             case OneWay:
                 // setup the IObservable listener
                 switch (source.expr) {
-                    case EField(vm, prop, _):
-                        return macro {
-                            $vm.addListener($v{prop}, () -> {
-                                trace("vm change (oneway) " + $v{prop});
-                                $target = $source;
+                    case EField(vm,prop,_) 
+                       | EParenthesis(_.expr => ECheckType(_.expr => EField(vm,prop,_), _)):
+                        return macro @:observer {
+                            $vm.propertyChanged.connect(name -> {
+                                if (name == $v{prop}) {
+                                    trace("vm change (oneway) " + $v{prop});
+                                    $target = $source;
+                                }
                             });
                         };
                     default:
                 }
+                // switch (source.expr) {
+                //     case EField(vm,prop,_) 
+                //        | EParenthesis(_.expr => ECheckType(_.expr => EField(vm,prop,_), _)):
+                //         return macro @:observer {
+                //             $vm.addListener($v{prop}, () -> {
+                //                 trace("vm change (oneway) " + $v{prop});
+                //                 $target = $source;
+                //             });
+                //         };
+                //     default:
+                // }
                 
             case OneWayToSource:
                 // setup the HaxeUI listener
                 switch (target.expr) {
                     case EField(comp, prop, _):
-                        return macro {
+                        return macro @:observer {
                             $comp.registerEvent(haxe.ui.events.UIEvent.PROPERTY_CHANGE, e -> {
                                 if (e.data == $v{prop}) {
                                     trace("comp change (onewaytosource) "+$v{prop});
@@ -97,11 +116,17 @@ class Setup {
                 // setup both listeners
                 switch ([source.expr, target.expr]) {
                     case [EField(vm, vmprop, _), EField(comp, compprop, _)]:
-                        return macro {
-                            $vm.addListener($v{vmprop}, () -> {
-                                trace("vm change (twoway) " + $v{vmprop});
-                                $target = $source;
+                        return macro @:observer {
+                            $vm.propertyChanged.connect(name -> {
+                                if (name == $v{vmprop}) {
+                                    trace("vm change (twoway) " + $v{vmprop});
+                                    $target = $source;
+                                }
                             });
+                            // $vm.addListener($v{vmprop}, () -> {
+                            //     trace("vm change (twoway) " + $v{vmprop});
+                            //     $target = $source;
+                            // });
                             $comp.registerEvent(haxe.ui.events.UIEvent.PROPERTY_CHANGE, e -> {
                                 if (e.data == $v{compprop}) {
                                     trace("comp change (twoway) "+$v{compprop});
@@ -113,17 +138,22 @@ class Setup {
                 }
                 
         }
+        
+        Context.error("Failed to parse binding", Context.currentPos());
         return macro null;
     }
     #end
 
     public static macro function bind(expr:Expr) {
+        trace(expr);
         return switch (expr.expr) {
             case EBinop(OpShr, source, target): bindInternal(source, target, OneTime);
             case EBinop(OpArrow, source, target): bindInternal(source, target, OneWay);
             case EBinop(OpLte, source, target): bindInternal(source, target, OneWayToSource);
             case EBinop(OpEq, source, target): bindInternal(source, target, TwoWay);
-            case _: throw "unknown bind expression";
+            // case EParenthesis(e): bind(expr);
+            // case ECheckType(e, t): macro trace("i am a fucking god");
+            case _: Context.error("Unknown expression", expr.pos);
         }
     }
 
