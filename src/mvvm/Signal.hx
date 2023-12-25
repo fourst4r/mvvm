@@ -1,5 +1,6 @@
 package mvvm;
 
+@:generic
 abstract Signal<T>(Array<T->Void>) {
     public function new() {
         this = [];
