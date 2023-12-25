@@ -12,12 +12,16 @@ function build() {
 
     for (f in observableFields) {
         final accessors = makeAccessors(f);
+        // TODO: probably best to only add the accessors that don't already exist
         fields = fields.concat(accessors);
     }
 
-    fields = fields.concat((macro class Dummy {
-        public var propertyChanged:Signal<String> = new Signal();
-    }).fields);
+    if (!fields.exists(f -> f.name == "propertyChanged")) {
+        fields = fields.concat((macro class Dummy {
+            public final propertyChanged:Signal<String> = new Signal();
+        }).fields);
+    }
+
 
     // fields = fields.concat((macro class Dummy {
     //     var __listeners:Map<String, Array<Void->Void>> = [];
@@ -57,7 +61,6 @@ function makeAccessors(field:Field):Array<Field> {
             if ($i{field.name} != v) {
                 $i{field.name} = v;
                 propertyChanged.emit($v{field.name});
-                // onPropertyChanged($v{field.name});
             }
             return v;
         }
@@ -70,8 +73,5 @@ function makeAccessors(field:Field):Array<Field> {
 
 @:autoBuild(mvvm.IObservable.build())
 interface IObservable {
-    var propertyChanged:Signal<String>;
-    // function addListener(name:String, callback:Void->Void):Void;
-    // function removeListener(name:String, callback:Void->Void):Void;
-    // function onPropertyChanged(name:String):Void;
+    final propertyChanged:Signal<String>;
 }

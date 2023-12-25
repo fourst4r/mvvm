@@ -1,3 +1,6 @@
+# TODO
+- review ObservableArray implementation
+
 # Binding
 | BindingMode | source __ target
 | - | - 

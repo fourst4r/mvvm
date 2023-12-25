@@ -48,16 +48,16 @@ class Setup {
                 switch (source.expr) {
                     case EField(vm, prop, _)
                        | EParenthesis(_.expr => ECheckType(_.expr => EField(vm,prop,_), _)):
-                        return macro @:observer {
-                            var cb:String->Void = null;
-                            cb = name -> {
-                                if (name == $v{prop}) {
+                        return macro {
+                            // var cb:String->Void = null;
+                            // cb = name -> {
+                                // if (name == $v{prop}) {
                                     trace("vm change (onetime) " + $v{prop});
                                     $target = $source;
-                                    $vm.propertyChanged.disconnect(cb);
-                                }
-                            };
-                            $vm.propertyChanged.connect(cb);
+                            //         $vm.propertyChanged.disconnect(cb);
+                            //     }
+                            // };
+                            // $vm.propertyChanged.connect(cb);
                         };
                         // return macro @:observer {
                         //     var cb:()->Void = null;
@@ -75,13 +75,14 @@ class Setup {
                 switch (source.expr) {
                     case EField(vm,prop,_) 
                        | EParenthesis(_.expr => ECheckType(_.expr => EField(vm,prop,_), _)):
-                        return macro @:observer {
+                        return macro {
                             $vm.propertyChanged.connect(name -> {
                                 if (name == $v{prop}) {
                                     trace("vm change (oneway) " + $v{prop});
                                     $target = $source;
                                 }
                             });
+                            $target = $source;
                         };
                     default:
                 }
@@ -101,13 +102,14 @@ class Setup {
                 // setup the HaxeUI listener
                 switch (target.expr) {
                     case EField(comp, prop, _):
-                        return macro @:observer {
+                        return macro {
                             $comp.registerEvent(haxe.ui.events.UIEvent.PROPERTY_CHANGE, e -> {
                                 if (e.data == $v{prop}) {
                                     trace("comp change (onewaytosource) "+$v{prop});
                                     $source = $target;
                                 }
                             });
+                            $source = $target;
                         };
                     default:
                 }
@@ -116,7 +118,8 @@ class Setup {
                 // setup both listeners
                 switch ([source.expr, target.expr]) {
                     case [EField(vm, vmprop, _), EField(comp, compprop, _)]:
-                        return macro @:observer {
+                        return macro {
+                            $source = $target;
                             $vm.propertyChanged.connect(name -> {
                                 if (name == $v{vmprop}) {
                                     trace("vm change (twoway) " + $v{vmprop});
