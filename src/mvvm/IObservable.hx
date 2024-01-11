@@ -22,31 +22,7 @@ function build() {
         }).fields);
     }
 
-
-    // fields = fields.concat((macro class Dummy {
-    //     var __listeners:Map<String, Array<Void->Void>> = [];
-
-    //     public function addListener(name:String, callback:Void->Void):Void {
-    //         var arr = __listeners.get(name);
-    //         if (arr == null) 
-    //             __listeners.set(name, arr = []);
-    //         arr.push(callback);
-    //     }
-    
-    //     public function removeListener(name:String, callback:Void->Void) {
-    //         __listeners.get(name)?.remove(callback);
-    //     }
-    
-    //     public function onPropertyChanged(name:String):Void {
-    //         final callbacks = __listeners.get(name);
-    //         if (callbacks != null) 
-    //             for (cb in callbacks)
-    //                 cb();
-    //     }
-    // }).fields);
-
     return fields;
-
 }
 
 function makeAccessors(field:Field):Array<Field> {

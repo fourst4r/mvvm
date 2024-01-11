@@ -11,6 +11,8 @@
 
 # Converters
 ```haxe
+import mvvm.Binding.bind;
+
 @:transitive abstract Currency(Float) from Float {
     @:to function toString():String {
         return "$" + Std.string(this) + ".00";
